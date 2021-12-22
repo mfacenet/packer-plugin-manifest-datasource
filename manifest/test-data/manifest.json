@@ -1,0 +1,23 @@
+{
+  "builds": [
+    {
+      "name": "virtualbox_zero_config",
+      "builder_type": "virtualbox-iso",
+      "build_time": 1639951415,
+      "files": [
+        {
+          "name": "..\\builds\\zero-config-disk001.vmdk",
+          "size": 4894903296
+        },
+        {
+          "name": "..\\builds\\zero-config.ovf",
+          "size": 7010
+        }
+      ],
+      "artifact_id": "VM",
+      "packer_run_uuid": "d53141f2-4e9c-e14c-67aa-06b3e4cb25dc",
+      "custom_data": null
+    }
+  ],
+  "last_run_uuid": "d53141f2-4e9c-e14c-67aa-06b3e4cb25dc"
+}

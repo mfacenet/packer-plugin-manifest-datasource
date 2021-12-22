@@ -1,0 +1,4 @@
+main
+dist/*
+packer-plugin-manifest-datasource
+vendor/*
