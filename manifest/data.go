@@ -1,28 +1,28 @@
 //go:generate packer-sdc struct-markdown
-//go:generate packer-sdc mapstructure-to-hcl2 -type Config.DatasourceOutput
+//go:generate packer-sdc mapstructure-to-hcl2 -type Config,DataSourceOutput
 
 package manifest
 
 import (
-	"fmt"
+	"encoding/json"
+	"errors"
 	"io/ioutil"
 
 	"github.com/hashicorp/hcl/v2/hcldec"
 	"github.com/hashicorp/packer-plugin-sdk/common"
-	"github.com/hashicorp/packer-plugin-sdk/json"
-	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
+	"github.com/hashicorp/packer-plugin-sdk/hcl2helper"
 	"github.com/hashicorp/packer-plugin-sdk/template/config"
 	"github.com/zclconf/go-cty/cty"
 )
+
+type Datasource struct {
+	config Config
+}
 
 type Config struct {
 	// Source manifest file
 	source              string `mapstructure:"source"`
 	common.PackerConfig `mapstructure:",squash"`
-}
-
-type Datasource struct {
-	config Config
 }
 
 type File struct {
@@ -41,8 +41,8 @@ type Build struct {
 }
 
 type DataSourceOutput struct {
-	builds        []Build
-	last_run_uuid string
+	builds        []Build `mapstructure:"builds"`
+	last_run_uuid string  `mapstructure:"last_run_uuid"`
 }
 
 func (d *Datasource) ConfigSpec() hcldec.ObjectSpec {
@@ -55,40 +55,30 @@ func (d *Datasource) Configure(raws ...interface{}) error {
 		return err
 	}
 
-	var errs *packersdk.MultiError
-	errs = packersdk.MutliErrorAppend(errs, d.config.AccessConfig.Prepare(&d.config.PackerConfig)...)
-
-	if d.config.Empty() {
-		errs = packersdk.MultiErrorAppend(errs, fmt.Errorf("A source must be specified"))
-	}
-
-	if errs != nil && len(errs.Errors) > 0 {
-		return errs
+	if len(d.config.source) < 1 {
+		err := errors.New("A path must be provided for the source of the datafile")
+		return err
 	}
 
 	return nil
 }
 
 func (d *Datasource) OutputSpec() hcldec.ObjectSpec {
-	return (&DataSourceOutput{}).Flatmapstructure().HCL2SPec()
+	return (&DataSourceOutput{}).FlatMapstructure().HCL2Spec()
 }
 
 func (d *Datasource) Execute() (cty.Value, error) {
-	output := DataSourceOutput{}
-	emptyOutput := hcl2Helper.HCL2ValueFromConfig(output, d.OutputSpec())
-
 	//Open File
 	content, err := ioutil.ReadFile(d.config.source)
 	if err != nil {
 		return cty.NullVal(cty.EmptyObject), err
 	}
-	var payload Data
-
-	err = json.Unmarshal(content, &payload)
+	output := DataSourceOutput{}
+	err = json.Unmarshal(content, &output)
 	if err != nil {
 		return cty.NullVal(cty.EmptyObject), err
 	}
 	// Build out Data structures
 
-	return emptyOutput, err
+	return hcl2helper.HCL2ValueFromConfig(output, d.OutputSpec()), err
 }

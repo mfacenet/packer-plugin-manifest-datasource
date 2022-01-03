@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/hashicorp/packer-plugin-sdk/plugin"
-	"github.com/mfacenet/manifest-datasource/manifest"
-	"github.com/mfacenet/manifest-datasource/version"
+	"github.com/mfacenet/packer-plugin-manifest-datasource/manifest"
+	"github.com/mfacenet/packer-plugin-manifest-datasource/version"
 )
 
 type DataSource struct{}
