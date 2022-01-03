@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	manifest "./manifest"
-	version "./version"
 	"github.com/hashicorp/packer-plugin-sdk/plugin"
-	"github.com/hashicorp/packer-plugin-sdk/version"
+	"github.com/mfacenet/manifest-datasource/manifest"
+	"github.com/mfacenet/manifest-datasource/version"
 )
 
 type DataSource struct{}

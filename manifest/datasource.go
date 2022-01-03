@@ -1,55 +1,52 @@
+//go:generate packer-sdc struct-markdown
 //go:generate packer-sdc mapstructure-to-hcl2 -type Config.DatasourceOutput
+
 package manifest
 
 import (
-	"errors"
+	"fmt"
+	"io/ioutil"
 
 	"github.com/hashicorp/hcl/v2/hcldec"
+	"github.com/hashicorp/packer-plugin-sdk/common"
+	"github.com/hashicorp/packer-plugin-sdk/json"
+	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
 	"github.com/hashicorp/packer-plugin-sdk/template/config"
 	"github.com/zclconf/go-cty/cty"
 )
 
 type Config struct {
 	// Source manifest file
-	source string `mapstructure:"source"`
+	source              string `mapstructure:"source"`
+	common.PackerConfig `mapstructure:",squash"`
 }
 
 type Datasource struct {
 	config Config
 }
 
-/* Json Format used to model output on
-{
-  "builds": [
-    {
-      "name": "virtualbox_zero_config",
-      "builder_type": "virtualbox-iso",
-      "build_time": 1639951415,
-      "files": [
-        {
-          "name": "..\\builds\\zero-config-disk001.vmdk",
-          "size": 4894903296
-        },
-        {
-          "name": "..\\builds\\zero-config.ovf",
-          "size": 7010
-        }
-      ],
-      "artifact_id": "VM",
-      "packer_run_uuid": "d53141f2-4e9c-e14c-67aa-06b3e4cb25dc",
-      "custom_data": null
-    }
-  ],
-  "last_run_uuid": "d53141f2-4e9c-e14c-67aa-06b3e4cb25dc"
+type File struct {
+	name string
+	size int
 }
-*/
+
+type Build struct {
+	name            string
+	builder_type    string
+	build_time      int
+	artifact_id     string
+	packer_run_uuid string
+	custom_data     string
+	files           []File
+}
 
 type DataSourceOutput struct {
-	latestBuild string `mapstructure:"latestBuild"`
+	builds        []Build
+	last_run_uuid string
 }
 
 func (d *Datasource) ConfigSpec() hcldec.ObjectSpec {
-	return d.config.Flatmapstructure().HCL2Spec()
+	return d.config.FlatMapstructure().HCL2Spec()
 }
 
 func (d *Datasource) Configure(raws ...interface{}) error {
@@ -57,9 +54,18 @@ func (d *Datasource) Configure(raws ...interface{}) error {
 	if err != nil {
 		return err
 	}
-	if d.config.source == "" {
-		d.config.source = "manifest.json"
+
+	var errs *packersdk.MultiError
+	errs = packersdk.MutliErrorAppend(errs, d.config.AccessConfig.Prepare(&d.config.PackerConfig)...)
+
+	if d.config.Empty() {
+		errs = packersdk.MultiErrorAppend(errs, fmt.Errorf("A source must be specified"))
 	}
+
+	if errs != nil && len(errs.Errors) > 0 {
+		return errs
+	}
+
 	return nil
 }
 
@@ -70,11 +76,19 @@ func (d *Datasource) OutputSpec() hcldec.ObjectSpec {
 func (d *Datasource) Execute() (cty.Value, error) {
 	output := DataSourceOutput{}
 	emptyOutput := hcl2Helper.HCL2ValueFromConfig(output, d.OutputSpec())
-	err := errors.New("This functionality hasn't been implemented yet")
 
 	//Open File
+	content, err := ioutil.ReadFile(d.config.source)
+	if err != nil {
+		return cty.NullVal(cty.EmptyObject), err
+	}
+	var payload Data
 
-	//Parse File
+	err = json.Unmarshal(content, &payload)
+	if err != nil {
+		return cty.NullVal(cty.EmptyObject), err
+	}
+	// Build out Data structures
 
-	return (emptyOutput, err)
+	return emptyOutput, err
 }
